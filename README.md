@@ -21,6 +21,8 @@
 
 ## 运行
 
+使用 Visual Studio 2026/2022（需支持 .NET 10）打开根目录下的 `RocketChat.sln`，将 `RocketChat.Client` 设为启动项目后运行；也可以使用命令行：
+
 ```powershell
 dotnet run --project .\RocketChat.Client\RocketChat.Client.csproj
 ```
@@ -30,8 +32,8 @@ dotnet run --project .\RocketChat.Client\RocketChat.Client.csproj
 ## 构建与测试
 
 ```powershell
-dotnet build .\RocketChat.slnx -c Release
-dotnet test .\RocketChat.slnx -c Release
+dotnet build .\RocketChat.sln -c Release
+dotnet test .\RocketChat.sln -c Release
 ```
 
 发布独立的 Windows x64 版本：
