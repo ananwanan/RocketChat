@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.pfx
+*.snk
+.env
+.env.*
+appsettings.Development.json
+TestResults/
+publish/
+artifacts/
