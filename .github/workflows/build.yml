@@ -18,3 +18,20 @@ jobs:
       - run: dotnet restore RocketChat.sln
       - run: dotnet build RocketChat.sln -c Release --no-restore
       - run: dotnet test RocketChat.sln -c Release --no-build
+
+  flutter:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flutter-actions/setup-flutter@v4.2
+        with:
+          version: 3.47.2
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build web --release

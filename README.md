@@ -1,5 +1,8 @@
-# RocketChat
+# RocketChat 客户端
 
-C# 客户端源码、Visual Studio 解决方案、测试和打包脚本统一位于 [`CSharp`](./CSharp/) 目录。
+本仓库包含两套独立客户端：
 
-使用 Visual Studio 打开 [`CSharp/RocketChat.sln`](./CSharp/RocketChat.sln)，或参阅 [`CSharp/README.md`](./CSharp/README.md) 获取构建、运行和打包说明。
+- [`CSharp`](./CSharp/)：C#、.NET 10 和 WPF 原生 Windows 客户端。
+- [`flutter`](./flutter/)：面向 Windows、Android、iOS、macOS、Linux 和 Web 的 Flutter 跨平台客户端。
+
+各目录内的 README 提供构建、运行、测试和打包说明。
