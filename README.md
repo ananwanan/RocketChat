@@ -39,7 +39,25 @@ dotnet test .\RocketChat.sln -c Release
 发布独立的 Windows x64 版本：
 
 ```powershell
-dotnet publish .\RocketChat.Client\RocketChat.Client.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o .\publish
+.\scripts\pack.ps1 -SelfContained -Version 1.0.0
+```
+
+也可以直接双击或从命令提示符运行 `pack.cmd`。脚本默认生成框架依赖的 Windows x64 单文件包，并在 `artifacts` 目录中输出 ZIP、SHA-256 校验文件和解压目录。
+
+常用参数：
+
+```powershell
+# 默认的框架依赖 x64 单文件包
+.\scripts\pack.ps1
+
+# 无需目标电脑预装 .NET 的自包含包
+.\scripts\pack.ps1 -SelfContained -Version 1.0.0
+
+# Windows ARM64 包
+.\scripts\pack.ps1 -Runtime win-arm64 -SelfContained
+
+# 保留多个发布文件，不合并为单文件
+.\scripts\pack.ps1 -NoSingleFile
 ```
 
 ## 安全说明
