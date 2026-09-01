@@ -3,13 +3,18 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'models.dart';
+import 'services/credential_store.dart';
 import 'services/realtime_client.dart';
 import 'services/rocket_chat_api.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({RocketChatApi? api, RealtimeClient? realtime})
-    : api = api ?? RocketChatApi(),
-      realtime = realtime ?? RealtimeClient() {
+  AppState({
+    RocketChatApi? api,
+    RealtimeClient? realtime,
+    CredentialStore? credentialStore,
+  }) : api = api ?? RocketChatApi(),
+       realtime = realtime ?? RealtimeClient(),
+       credentialStore = credentialStore ?? CredentialStore() {
     _messageSubscription = this.realtime.messages.listen(_onRealtimeMessage);
     _statusSubscription = this.realtime.status.listen((value) {
       realtimeStatus = value;
@@ -18,6 +23,7 @@ class AppState extends ChangeNotifier {
   }
   final RocketChatApi api;
   final RealtimeClient realtime;
+  final CredentialStore credentialStore;
   late final StreamSubscription<ChatMessage> _messageSubscription;
   late final StreamSubscription<String> _statusSubscription;
   Session? session;
@@ -41,7 +47,29 @@ class AppState extends ChangeNotifier {
         .toList();
   }
 
-  Future<bool> login(String server, String username, String password) async {
+  Future<SavedCredentials?> loadSavedCredentials() async {
+    try {
+      return await credentialStore.load();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> clearSavedCredentials() async {
+    try {
+      await credentialStore.clear();
+    } catch (exception) {
+      error = '清除已保存密码失败：$exception';
+      notifyListeners();
+    }
+  }
+
+  Future<bool> login(
+    String server,
+    String username,
+    String password, {
+    bool rememberPassword = false,
+  }) async {
     busy = true;
     error = null;
     notifyListeners();
@@ -52,6 +80,21 @@ class AppState extends ChangeNotifier {
       workspaceName = info.name;
       workspaceVersion = info.version;
       await refreshRooms();
+      try {
+        if (rememberPassword) {
+          await credentialStore.save(
+            SavedCredentials(
+              server: server.trim(),
+              username: username.trim(),
+              password: password,
+            ),
+          );
+        } else {
+          await credentialStore.clear();
+        }
+      } catch (exception) {
+        error = '登录成功，但保存密码失败：$exception';
+      }
       try {
         await realtime.connect(api.serverUri!, activeSession, api);
       } catch (exception) {

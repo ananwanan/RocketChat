@@ -1,7 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:rocket_chat_flutter/main.dart';
+import 'package:rocket_chat_flutter/app_state.dart';
 import 'package:rocket_chat_flutter/models.dart';
+import 'package:rocket_chat_flutter/screens/login_screen.dart';
+import 'package:rocket_chat_flutter/services/credential_store.dart';
+
+class MemoryLoginStorage implements SecureStorageBackend {
+  final values = <String, String>{};
+
+  @override
+  Future<void> delete(String key) async => values.remove(key);
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
+}
 
 void main() {
   test('room exposes the correct icon and unread state', () {
@@ -31,12 +46,38 @@ void main() {
     expect(message.initial, 'C');
   });
 
-  testWidgets('login screen renders without credentials', (tester) async {
-    await tester.pumpWidget(const RocketChatApp());
+  testWidgets('login screen restores securely saved credentials', (
+    tester,
+  ) async {
+    final store = CredentialStore(backend: MemoryLoginStorage());
+    await store.save(
+      const SavedCredentials(
+        server: 'https://chat.example.com/',
+        username: 'saved-user',
+        password: 'saved-password',
+      ),
+    );
+    final state = AppState(credentialStore: store);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(fontFamily: 'MiSansVF'),
+        home: LoginScreen(state: state),
+      ),
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('Rocket.Chat'), findsOneWidget);
     expect(find.text('Flutter 跨平台客户端'), findsOneWidget);
     expect(find.text('登录'), findsOneWidget);
     expect(find.textContaining('密码只用于本次登录'), findsOneWidget);
+    expect(find.text('保存密码'), findsOneWidget);
+    final fields = tester
+        .widgetList<TextFormField>(find.byType(TextFormField))
+        .toList();
+    expect(fields[0].controller?.text, 'https://chat.example.com/');
+    expect(fields[1].controller?.text, 'saved-user');
+    expect(fields[2].controller?.text, 'saved-password');
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
     expect(
       Theme.of(tester.element(find.text('Rocket.Chat')))
           .textTheme
@@ -44,5 +85,8 @@ void main() {
           ?.fontFamily,
       'MiSansVF',
     );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    state.dispose();
   });
 }
