@@ -38,6 +38,7 @@ class _RocketChatAppState extends State<RocketChatApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff13679a)),
+        fontFamily: 'MiSansVF',
         useMaterial3: true,
         inputDecorationTheme: const InputDecorationTheme(
           border: OutlineInputBorder(),
@@ -48,6 +49,7 @@ class _RocketChatAppState extends State<RocketChatApp> {
           seedColor: const Color(0xff5da9d6),
           brightness: Brightness.dark,
         ),
+        fontFamily: 'MiSansVF',
         useMaterial3: true,
       ),
       home: ListenableBuilder(

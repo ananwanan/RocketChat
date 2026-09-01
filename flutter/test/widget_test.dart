@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:rocket_chat_flutter/main.dart';
 import 'package:rocket_chat_flutter/models.dart';
 
@@ -36,5 +37,12 @@ void main() {
     expect(find.text('Flutter 跨平台客户端'), findsOneWidget);
     expect(find.text('登录'), findsOneWidget);
     expect(find.textContaining('密码只用于本次登录'), findsOneWidget);
+    expect(
+      Theme.of(tester.element(find.text('Rocket.Chat')))
+          .textTheme
+          .bodyMedium
+          ?.fontFamily,
+      'MiSansVF',
+    );
   });
 }

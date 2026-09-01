@@ -2,6 +2,8 @@
 
 使用 Flutter 编写的 Rocket.Chat 跨平台客户端，支持 Windows、Android、iOS、macOS、Linux 和 Web。业务操作使用官方 REST API，实时消息通过 DDP WebSocket 接收。
 
+界面全局使用项目内置的 MiSans VF 可变字体（`assets/fonts/MiSansVF.ttf`）。
+
 ## 功能
 
 - 自定义服务器登录，账号和密码不会保存到磁盘
