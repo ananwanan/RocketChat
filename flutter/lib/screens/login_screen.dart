@@ -6,13 +6,16 @@ import '../app_state.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.state});
+
+  static const defaultServer = 'http://192.168.31.188:3000';
+
   final AppState state;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final server = TextEditingController(text: 'https://open.rocket.chat/');
+  final server = TextEditingController(text: LoginScreen.defaultServer);
   final username = TextEditingController();
   final password = TextEditingController();
   final formKey = GlobalKey<FormState>();

@@ -46,6 +46,24 @@ void main() {
     expect(message.initial, 'C');
   });
 
+  testWidgets('login screen uses the configured default server', (
+    tester,
+  ) async {
+    final state = AppState(
+      credentialStore: CredentialStore(backend: MemoryLoginStorage()),
+    );
+    await tester.pumpWidget(MaterialApp(home: LoginScreen(state: state)));
+    await tester.pumpAndSettle();
+
+    final serverField = tester.widget<TextFormField>(
+      find.byType(TextFormField).first,
+    );
+    expect(serverField.controller?.text, 'http://192.168.31.188:3000');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    state.dispose();
+  });
+
   testWidgets('login screen restores securely saved credentials', (
     tester,
   ) async {

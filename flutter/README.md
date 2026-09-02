@@ -24,6 +24,8 @@ flutter pub get
 flutter run -d windows
 ```
 
+登录页默认服务器为 `http://192.168.31.188:3000`，可在登录前修改；若此前启用了“保存密码”，安全存储中的服务器地址会优先回填。Android 和 Apple 平台仅为该局域网 IP 配置了明文 HTTP 例外，其他服务器仍应使用 HTTPS。
+
 ## 检查、测试与构建
 
 ```powershell
