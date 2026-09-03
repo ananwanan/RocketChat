@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.ananwanan.rocketchat.rocket_chat_flutter"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage 11.x requires Android SDK 37 or newer.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
