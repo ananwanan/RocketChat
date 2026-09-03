@@ -5,25 +5,8 @@ on:
   pull_request:
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: CSharp
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-      - run: dotnet restore RocketChat.sln
-      - run: dotnet build RocketChat.sln -c Release --no-restore
-      - run: dotnet test RocketChat.sln -c Release --no-build
-
   flutter:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: flutter
     steps:
       - uses: actions/checkout@v4
       - uses: flutter-actions/setup-flutter@v4.2

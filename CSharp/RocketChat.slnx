@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="RocketChat.Client/RocketChat.Client.csproj" />
-  <Project Path="RocketChat.Client.Tests/RocketChat.Client.Tests.csproj" />
-</Solution>
