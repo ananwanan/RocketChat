@@ -45,4 +45,5 @@ app.*.map.json
 *.snk
 .env
 .env.*
+/.tools/
 /artifacts/

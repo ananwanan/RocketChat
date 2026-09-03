@@ -38,12 +38,16 @@ flutter build web --release
 也可以使用根目录打包脚本：
 
 ```powershell
+.\package.cmd
+.\package.cmd installer
 .\package.cmd windows
 .\package.cmd web
 .\package.cmd android
 ```
 
-打包产物会复制到 `artifacts/<平台>/`。执行 `.\package.cmd all` 可依次打包当前系统支持的全部目标。
+不带参数或使用 `installer` 会生成可安装、可卸载的 Windows 安装程序及 SHA-256 校验文件，输出到 `artifacts/installer/`。首次生成安装程序时，脚本会从 Inno Setup 官方 GitHub 发布页下载经过数字签名和发布者验证的便携编译器到 `.tools/`。
+
+其他打包产物会复制到 `artifacts/<平台>/`。执行 `.\package.cmd all` 可依次生成 Windows 安装程序、Web 版本和 Android APK；Android 构建需要已配置 JDK 与 Android SDK。
 
 构建 iOS 和 macOS 版本需要 macOS 与对应的 Xcode 环境。服务器权限和功能开关可能影响创建频道、编辑或删除消息等操作。
 
