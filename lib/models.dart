@@ -20,6 +20,7 @@ class Room {
     this.unread = 0,
     this.favorite = false,
     this.lastSeen,
+    this.avatarUsername,
   });
   final String id;
   final String name;
@@ -28,6 +29,7 @@ class Room {
   int unread;
   final bool favorite;
   final DateTime? lastSeen;
+  final String? avatarUsername;
   String get icon => switch (type) {
     'd' => '●',
     'p' => '◆',
@@ -68,8 +70,9 @@ class ChatMessage {
   final String? threadId;
   final int replyCount;
   String get author => displayName.isEmpty ? username : displayName;
-  String get initial =>
-      author.isEmpty ? '?' : author.substring(0, 1).toUpperCase();
+  String get initial => author.isEmpty
+      ? '?'
+      : String.fromCharCode(author.runes.first).toUpperCase();
 }
 
 class UserResult {

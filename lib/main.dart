@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
@@ -23,6 +25,7 @@ class _RocketChatAppState extends State<RocketChatApp> {
   void initState() {
     super.initState();
     state = AppState();
+    unawaited(state.initializeNotifications());
   }
 
   @override
@@ -37,11 +40,47 @@ class _RocketChatAppState extends State<RocketChatApp> {
       title: 'Rocket.Chat Flutter',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff13679a)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xff5b5bd6),
+          primary: const Color(0xff5555cf),
+          surface: const Color(0xfff7f8fc),
+        ),
         fontFamily: 'MiSansVF',
         useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
+        scaffoldBackgroundColor: const Color(0xfff7f8fc),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xffffffff),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xffe3e5ee)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xffe3e5ee)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xff6868df), width: 1.5),
+          ),
+        ),
+        cardTheme: const CardThemeData(
+          elevation: 0,
+          color: Colors.white,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(24)),
+            side: BorderSide(color: Color(0xffe8e9f1)),
+          ),
+        ),
+        dividerTheme: const DividerThemeData(color: Color(0xffe8e9f1)),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
         ),
       ),
       darkTheme: ThemeData(
@@ -51,6 +90,10 @@ class _RocketChatAppState extends State<RocketChatApp> {
         ),
         fontFamily: 'MiSansVF',
         useMaterial3: true,
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
       ),
       home: ListenableBuilder(
         listenable: state,

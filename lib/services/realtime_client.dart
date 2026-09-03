@@ -10,10 +10,12 @@ class RealtimeClient {
   WebSocketChannel? _channel;
   StreamSubscription<Object?>? _subscription;
   final _messages = StreamController<ChatMessage>.broadcast();
+  final _subscriptionsChanged = StreamController<void>.broadcast();
   final _status = StreamController<String>.broadcast();
   final Map<String, String> _roomSubscriptions = {};
   RocketChatApi? _api;
   Stream<ChatMessage> get messages => _messages.stream;
+  Stream<void> get subscriptionsChanged => _subscriptionsChanged.stream;
   Stream<String> get status => _status.stream;
 
   Future<void> connect(Uri server, Session session, RocketChatApi api) async {
@@ -46,12 +48,17 @@ class RealtimeClient {
         {'resume': session.authToken},
       ],
     });
+    _send({
+      'msg': 'sub',
+      'id': 'subscriptions-changed',
+      'name': 'stream-notify-user',
+      'params': ['${session.userId}/subscriptions-changed', false],
+    });
     _status.add('实时连接已建立');
   }
 
   void subscribeRoom(String roomId) {
-    final old = _roomSubscriptions.remove(roomId);
-    if (old != null) _send({'msg': 'unsub', 'id': old});
+    if (_roomSubscriptions.containsKey(roomId)) return;
     final id = '${DateTime.now().microsecondsSinceEpoch}-$roomId';
     _roomSubscriptions[roomId] = id;
     _send({
@@ -74,6 +81,11 @@ class RealtimeClient {
       if (json['msg'] != 'changed') return;
       final fields = json['fields'];
       if (fields is! Map || fields['args'] is! List) return;
+      if (fields['eventName'] is String &&
+          (fields['eventName'] as String).endsWith('/subscriptions-changed')) {
+        _subscriptionsChanged.add(null);
+        return;
+      }
       for (final raw in fields['args'] as List) {
         if (raw is! Map) continue;
         final item = Map<String, dynamic>.from(raw);
@@ -101,6 +113,7 @@ class RealtimeClient {
   Future<void> dispose() async {
     await disconnect();
     await _messages.close();
+    await _subscriptionsChanged.close();
     await _status.close();
   }
 }

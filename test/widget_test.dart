@@ -4,6 +4,29 @@ import 'package:rocket_chat_flutter/app_state.dart';
 import 'package:rocket_chat_flutter/models.dart';
 import 'package:rocket_chat_flutter/screens/login_screen.dart';
 import 'package:rocket_chat_flutter/services/credential_store.dart';
+import 'package:rocket_chat_flutter/services/rocket_chat_api.dart';
+
+class FakeConversationApi extends RocketChatApi {
+  @override
+  Future<List<UserResult>> searchUsers(String term) async => const [
+    UserResult(id: 'u2', username: 'alice', name: 'Alice', status: 'online'),
+  ];
+
+  @override
+  Future<String> createDirectMessage(String username) async => 'room-alice';
+
+  @override
+  Future<List<Room>> rooms() async => [];
+
+  @override
+  Future<List<ChatMessage>> history(Room room, {int count = 100}) async => [];
+
+  @override
+  Future<void> markRead(String roomId) async {}
+
+  @override
+  void dispose() {}
+}
 
 class MemoryLoginStorage implements SecureStorageBackend {
   final values = <String, String>{};
@@ -44,6 +67,38 @@ void main() {
     );
     expect(message.author, 'coder');
     expect(message.initial, 'C');
+  });
+
+  test('message initial keeps a complete unicode character', () {
+    final message = ChatMessage(
+      id: 'm2',
+      roomId: 'GENERAL',
+      userId: 'u2',
+      username: 'emoji',
+      displayName: '😀 user',
+      text: 'hello',
+      timestamp: DateTime.utc(2026),
+    );
+    expect(message.initial, '😀');
+  });
+
+  testWidgets('a newly created direct message is visible immediately', (
+    tester,
+  ) async {
+    final state = AppState(
+      api: FakeConversationApi(),
+      credentialStore: CredentialStore(backend: MemoryLoginStorage()),
+    );
+
+    expect(await state.newDirectMessage('@alice'), isTrue);
+    expect(state.rooms.map((room) => room.id), contains('room-alice'));
+    expect(state.selectedRoom?.id, 'room-alice');
+    expect(state.selectedRoom?.avatarUsername, 'alice');
+
+    await state.refreshRooms();
+    expect(state.rooms.map((room) => room.id), contains('room-alice'));
+
+    state.dispose();
   });
 
   testWidgets('login screen uses the configured default server', (

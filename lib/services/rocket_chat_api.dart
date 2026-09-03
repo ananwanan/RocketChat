@@ -55,17 +55,7 @@ class RocketChatApi {
         .whereType<Map>()
         .map((raw) => _map(raw))
         .where((item) => item['open'] != false)
-        .map(
-          (item) => Room(
-            id: _string(item, 'rid'),
-            name: _string(item, 'name'),
-            displayName: _string(item, 'fname', _string(item, 'name')),
-            type: _string(item, 't', 'c'),
-            unread: _integer(item, 'unread'),
-            favorite: item['f'] == true,
-            lastSeen: _date(item['ls']),
-          ),
-        )
+        .map(_parseRoom)
         .where((room) => room.id.isNotEmpty)
         .toList();
     result.sort((a, b) {
@@ -76,6 +66,32 @@ class RocketChatApi {
     });
     return result;
   }
+
+  Room _parseRoom(Map<String, dynamic> item) {
+    final type = _string(item, 't', 'c');
+    final name = _string(item, 'name');
+    return Room(
+      id: _string(item, 'rid'),
+      name: name,
+      displayName: _string(item, 'fname', name),
+      type: type,
+      unread: _integer(item, 'unread'),
+      favorite: item['f'] == true,
+      lastSeen: _date(item['ls']),
+      avatarUsername: type == 'd' && name.isNotEmpty ? name : null,
+    );
+  }
+
+  Uri? avatarUri(String username) {
+    if (serverUri == null || username.isEmpty) return null;
+    return serverUri!
+        .resolve('api/v1/users.getAvatar')
+        .replace(queryParameters: {'username': username});
+  }
+
+  Map<String, String> get authenticationHeaders => session == null
+      ? const {}
+      : {'X-User-Id': session!.userId, 'X-Auth-Token': session!.authToken};
 
   Future<List<ChatMessage>> history(Room room, {int count = 100}) async {
     final endpoint = switch (room.type) {

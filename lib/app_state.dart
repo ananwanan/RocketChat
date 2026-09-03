@@ -1,21 +1,28 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'models.dart';
 import 'services/credential_store.dart';
+import 'services/notification_service.dart';
 import 'services/realtime_client.dart';
 import 'services/rocket_chat_api.dart';
 
-class AppState extends ChangeNotifier {
+class AppState extends ChangeNotifier with WidgetsBindingObserver {
   AppState({
     RocketChatApi? api,
     RealtimeClient? realtime,
     CredentialStore? credentialStore,
+    NotificationService? notificationService,
   }) : api = api ?? RocketChatApi(),
        realtime = realtime ?? RealtimeClient(),
-       credentialStore = credentialStore ?? CredentialStore() {
+       credentialStore = credentialStore ?? CredentialStore(),
+       notificationService = notificationService ?? NotificationService() {
+    WidgetsBinding.instance.addObserver(this);
     _messageSubscription = this.realtime.messages.listen(_onRealtimeMessage);
+    _roomsSubscription = this.realtime.subscriptionsChanged.listen((_) {
+      unawaited(_refreshRoomsFromRealtime());
+    });
     _statusSubscription = this.realtime.status.listen((value) {
       realtimeStatus = value;
       notifyListeners();
@@ -24,7 +31,9 @@ class AppState extends ChangeNotifier {
   final RocketChatApi api;
   final RealtimeClient realtime;
   final CredentialStore credentialStore;
+  final NotificationService notificationService;
   late final StreamSubscription<ChatMessage> _messageSubscription;
+  late final StreamSubscription<void> _roomsSubscription;
   late final StreamSubscription<String> _statusSubscription;
   Session? session;
   String workspaceName = 'Rocket.Chat';
@@ -38,6 +47,27 @@ class AppState extends ChangeNotifier {
   ChatMessage? replyTo;
   String roomFilter = '';
   String? searchTerm;
+  bool _appActive = true;
+  bool _refreshingRooms = false;
+  final Set<String> _pendingCreatedRoomIds = {};
+
+  bool get notificationsEnabled => notificationService.enabled;
+
+  Future<void> initializeNotifications() async {
+    await notificationService.initialize(onRoomSelected: _openRoomById);
+    notifyListeners();
+  }
+
+  Future<void> setNotificationsEnabled(bool value) async {
+    if (!value) {
+      notificationService.disable();
+      notifyListeners();
+      return;
+    }
+    final granted = await notificationService.requestPermission();
+    if (!granted) error = '系统未授予通知权限，请在系统设置中开启。';
+    notifyListeners();
+  }
 
   List<Room> get filteredRooms {
     if (roomFilter.trim().isEmpty) return rooms;
@@ -97,9 +127,13 @@ class AppState extends ChangeNotifier {
       }
       try {
         await realtime.connect(api.serverUri!, activeSession, api);
+        for (final room in rooms) {
+          realtime.subscribeRoom(room.id);
+        }
       } catch (exception) {
         realtimeStatus = 'REST 模式：$exception';
       }
+      await setNotificationsEnabled(true);
       return true;
     } catch (exception) {
       error = exception.toString();
@@ -111,7 +145,22 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> refreshRooms({String? selectRoomId}) async {
-    rooms = await api.rooms();
+    final previousRooms = rooms;
+    final refreshedRooms = await api.rooms();
+    for (final roomId in _pendingCreatedRoomIds.toList()) {
+      if (refreshedRooms.any((room) => room.id == roomId)) {
+        _pendingCreatedRoomIds.remove(roomId);
+        continue;
+      }
+      final oldIndex = previousRooms.indexWhere((room) => room.id == roomId);
+      if (oldIndex >= 0) refreshedRooms.insert(0, previousRooms[oldIndex]);
+    }
+    rooms = refreshedRooms;
+    final currentId = selectedRoom?.id;
+    if (currentId != null) {
+      final currentIndex = rooms.indexWhere((room) => room.id == currentId);
+      if (currentIndex >= 0) selectedRoom = rooms[currentIndex];
+    }
     notifyListeners();
     if (selectRoomId != null) {
       final index = rooms.indexWhere((room) => room.id == selectRoomId);
@@ -203,16 +252,57 @@ class AppState extends ChangeNotifier {
     final index = users.indexWhere(
       (item) => item.username.toLowerCase() == normalized,
     );
-    final roomId = await api.createDirectMessage(
-      (index >= 0 ? users[index] : users.first).username,
+    final user = index >= 0 ? users[index] : users.first;
+    final roomId = await api.createDirectMessage(user.username);
+    await _openCreatedRoom(
+      Room(
+        id: roomId,
+        name: user.username,
+        displayName: user.name.isEmpty ? user.username : user.name,
+        type: 'd',
+        avatarUsername: user.username,
+      ),
     );
-    await refreshRooms(selectRoomId: roomId);
     return true;
   }
 
   Future<void> newChannel(String name, {bool private = false}) async {
     final roomId = await api.createChannel(name, private: private);
-    await refreshRooms(selectRoomId: roomId);
+    await _openCreatedRoom(
+      Room(
+        id: roomId,
+        name: name,
+        displayName: name,
+        type: private ? 'p' : 'c',
+      ),
+    );
+  }
+
+  Future<void> _openCreatedRoom(Room room) async {
+    if (room.id.isEmpty) {
+      throw const RocketChatException('服务器已创建会话，但没有返回会话 ID。');
+    }
+    final index = rooms.indexWhere((item) => item.id == room.id);
+    if (index < 0) {
+      _pendingCreatedRoomIds.add(room.id);
+      rooms = [room, ...rooms];
+    }
+    await selectRoom(index < 0 ? room : rooms[index]);
+  }
+
+  Future<void> _refreshRoomsFromRealtime() async {
+    if (_refreshingRooms || session == null) return;
+    _refreshingRooms = true;
+    try {
+      await refreshRooms();
+      for (final room in rooms) {
+        realtime.subscribeRoom(room.id);
+      }
+    } catch (_) {
+      // A transient refresh failure must not tear down the realtime stream.
+    } finally {
+      _refreshingRooms = false;
+    }
   }
 
   void setReply(ChatMessage? message) {
@@ -237,18 +327,34 @@ class AppState extends ChangeNotifier {
     rooms = [];
     messages = [];
     selectedRoom = null;
+    _pendingCreatedRoomIds.clear();
     error = null;
     notifyListeners();
   }
 
   void _onRealtimeMessage(ChatMessage message) {
-    if (message.roomId == selectedRoom?.id) {
+    final isCurrentRoom = message.roomId == selectedRoom?.id;
+    final roomIndex = rooms.indexWhere((room) => room.id == message.roomId);
+    final room = roomIndex < 0 ? null : rooms[roomIndex];
+    if (isCurrentRoom) {
       _upsertMessage(message);
     } else {
-      final index = rooms.indexWhere((room) => room.id == message.roomId);
-      if (index >= 0) rooms[index].unread++;
+      if (room != null) room.unread++;
+    }
+    if (message.userId != session?.userId && (!_appActive || !isCurrentRoom)) {
+      unawaited(notificationService.showMessage(message, room));
     }
     notifyListeners();
+  }
+
+  Future<void> _openRoomById(String roomId) async {
+    final index = rooms.indexWhere((room) => room.id == roomId);
+    if (index >= 0) await selectRoom(rooms[index]);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appActive = state == AppLifecycleState.resumed;
   }
 
   void _upsertMessage(ChatMessage message) {
@@ -263,7 +369,9 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _messageSubscription.cancel();
+    _roomsSubscription.cancel();
     _statusSubscription.cancel();
     realtime.dispose();
     api.dispose();
