@@ -4,6 +4,7 @@ import 'package:rocket_chat_flutter/app_state.dart';
 import 'package:rocket_chat_flutter/models.dart';
 import 'package:rocket_chat_flutter/screens/login_screen.dart';
 import 'package:rocket_chat_flutter/services/credential_store.dart';
+import 'package:rocket_chat_flutter/services/realtime_client.dart';
 import 'package:rocket_chat_flutter/services/rocket_chat_api.dart';
 
 class FakeConversationApi extends RocketChatApi {
@@ -26,6 +27,46 @@ class FakeConversationApi extends RocketChatApi {
 
   @override
   void dispose() {}
+}
+
+class FakeResumeApi extends RocketChatApi {
+  final room = Room(
+    id: 'GENERAL',
+    name: 'general',
+    displayName: 'General',
+    type: 'c',
+  );
+
+  @override
+  Future<List<Room>> rooms() async => [room];
+
+  @override
+  Future<List<ChatMessage>> history(Room room, {int count = 100}) async => [
+    ChatMessage(
+      id: 'missed-message',
+      roomId: room.id,
+      userId: 'u2',
+      username: 'alice',
+      displayName: 'Alice',
+      text: 'sent while backgrounded',
+      timestamp: DateTime.utc(2026),
+    ),
+  ];
+
+  @override
+  void dispose() {}
+}
+
+class FakeRealtimeClient extends RealtimeClient {
+  int reconnectCount = 0;
+
+  @override
+  Future<void> reconnect() async {
+    reconnectCount++;
+  }
+
+  @override
+  Future<void> dispose() async {}
 }
 
 class MemoryLoginStorage implements SecureStorageBackend {
@@ -160,6 +201,35 @@ void main() {
     );
 
     await tester.pumpWidget(const SizedBox.shrink());
+    state.dispose();
+  });
+
+  testWidgets('resuming the app reconnects and catches up missed messages', (
+    tester,
+  ) async {
+    final api = FakeResumeApi();
+    final realtime = FakeRealtimeClient();
+    final state = AppState(
+      api: api,
+      realtime: realtime,
+      credentialStore: CredentialStore(backend: MemoryLoginStorage()),
+    );
+    state.session = const Session(
+      userId: 'u1',
+      authToken: 'token',
+      username: 'me',
+      displayName: 'Me',
+    );
+    state.rooms = [api.room];
+    state.selectedRoom = api.room;
+
+    state.didChangeAppLifecycleState(AppLifecycleState.paused);
+    state.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(realtime.reconnectCount, 1);
+    expect(state.messages.map((message) => message.id), ['missed-message']);
+
     state.dispose();
   });
 }

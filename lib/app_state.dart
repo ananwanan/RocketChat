@@ -49,6 +49,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   String? searchTerm;
   bool _appActive = true;
   bool _refreshingRooms = false;
+  bool _resumingRealtime = false;
   final Set<String> _pendingCreatedRoomIds = {};
 
   bool get notificationsEnabled => notificationService.enabled;
@@ -354,7 +355,39 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final wasActive = _appActive;
     _appActive = state == AppLifecycleState.resumed;
+    if (_appActive && !wasActive && session != null) {
+      unawaited(_resumeRealtime());
+    }
+  }
+
+  Future<void> _resumeRealtime() async {
+    if (_resumingRealtime || session == null) return;
+    _resumingRealtime = true;
+    try {
+      await realtime.reconnect();
+      await refreshRooms();
+      final room = selectedRoom;
+      if (room != null && searchTerm == null) {
+        final latest = await api.history(room);
+        if (selectedRoom?.id == room.id && searchTerm == null) {
+          final byId = <String, ChatMessage>{
+            for (final message in messages) message.id: message,
+            for (final message in latest) message.id: message,
+          };
+          messages = byId.values.toList()
+            ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          notifyListeners();
+        }
+      }
+    } catch (exception) {
+      // RealtimeClient keeps retrying after transient mobile network failures.
+      realtimeStatus = '实时连接恢复中：$exception';
+      notifyListeners();
+    } finally {
+      _resumingRealtime = false;
+    }
   }
 
   void _upsertMessage(ChatMessage message) {
